@@ -120,6 +120,7 @@ def resolve_paths(shared_configs: dict) -> tuple[str, str]:
 def create_training_environment(output_relative_path: str) -> str:
     BASE_DIR = Path(__file__).resolve().parent #! TRY os.path.dirname INSTEAD
     output_path_base = os.path.join(BASE_DIR, output_relative_path)
+    print("OUTPUT PATH: ", output_path_base)
     if not os.path.exists(output_path_base):
         os.mkdir(os.path.join(output_path_base))
     
@@ -261,6 +262,8 @@ def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: d
             
             epoch_cummulative_loss+=total_loss.item()
             steps+=1
+            if i % 20:
+                logger.log(f"epoch: {epoch} big_step: {i}")
         
         #TODO: compute average epoch loss
         avg_train_mse = epoch_cummulative_loss/steps
