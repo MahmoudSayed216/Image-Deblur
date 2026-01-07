@@ -18,7 +18,6 @@ class GoProDataset(Dataset):
         self.scaling_factor = 0.5
         self.sharp_base = os.path.join(data_path, split, "sharp")
         self.blur_base = os.path.join(data_path, split, "blur")
-        print(self.blur_base)
         self.mode = split        
         self.transforms = transforms
         self.sharp_dir_content = os.listdir(self.sharp_base)

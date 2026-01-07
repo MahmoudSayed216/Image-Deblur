@@ -73,9 +73,9 @@ class DeepDeblur(nn.Module):
         device = shared_configs["device"]
 
         self.per_channel_mean = torch.tensor(per_channel_mean).view(1, 3, 1, 1).to(device=device)
-        self.finer_level_network = Network(training_configs=train_configs, finer_network=False, upscale=True)
+        self.coarse_level_network = Network(training_configs=train_configs, finer_network=False, upscale=True)
         self.intermediate_level_network = Network(training_configs=train_configs,finer_network=True, upscale=True)
-        self.coarse_level_network = Network(training_configs=train_configs,finer_network=True, upscale=False)
+        self.fine_level_network = Network(training_configs=train_configs,finer_network=True, upscale=False)
 
 
     def forward(self, blur_tensors):
@@ -84,15 +84,15 @@ class DeepDeblur(nn.Module):
         blur_tensors[-3] = blur_tensors[-3] - self.per_channel_mean
 
 
-        b3, u3 = self.finer_level_network(blur_tensors[-1])
+        b3, u3 = self.coarse_level_network(blur_tensors[-1])
         print("passed network 1")
         b2, u2 = self.intermediate_level_network(blur_tensors[-2], u3)
         print("passed network 2")
-        b1, _ = self.coarse_level_network(blur_tensors[-3], u2)
+        b1, _ = self.fine_level_network(blur_tensors[-3], u2)
         print("passed network 3")
         
         b3 = b3 + self.per_channel_mean
         b2 = b2 + self.per_channel_mean
         b1 = b1 + self.per_channel_mean
 
-        return b3, b2, b1 
+        return b1, b2, b3
