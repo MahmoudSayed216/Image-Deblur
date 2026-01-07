@@ -242,7 +242,7 @@ def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: d
         epoch_cummulative_loss = 0
         steps = 0
         for i, ((_256b, _128b, _64b), (_256s, _128s, _64s)) in enumerate(train_loader):
-            
+            logger.debug(f"input_size: {_256b.shape}")
             _256b = _256b.to(DEVICE)
             _128b = _128b.to(DEVICE)
             _64b = _64b.to(DEVICE)
