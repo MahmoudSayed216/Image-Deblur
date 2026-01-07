@@ -1,0 +1,17 @@
+2 Big images
+cropped 2 same region
+___________________________
+
+blurry-region & sharp-region
+
+cat -> both-region
+
+flip[both-region]
+rotate[both-region]
+
+
+split
+
+
+
+

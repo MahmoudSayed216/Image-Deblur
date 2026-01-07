@@ -1,0 +1,5 @@
+yaml
+torch
+torchvision
+pil
+torchmetrics

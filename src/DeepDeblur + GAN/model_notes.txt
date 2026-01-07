@@ -1,0 +1,10 @@
+model has 2 outputs
+the normal output S3
+and L3
+L3 is then passed to the upper level
+
+
+
+W_out = (W_in - k + 2p)/s + 1
+
+W_out - 2

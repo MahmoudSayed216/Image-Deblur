@@ -1,0 +1,13 @@
+use_debugger: true
+
+environment:
+  kaggle: false
+  dataset_base:
+    kaggle: "/kaggle/working"
+    local: "/home/mahmoud-sayed/Desktop/Datasets/Gopro Dataset"
+  output_dir:
+    kaggle: ""
+    local: "output"
+  debugger_active: true
+
+device: cpu

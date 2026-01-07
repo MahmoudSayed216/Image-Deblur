@@ -1,0 +1,17 @@
+model:
+  name: DeepDeblur
+  n_channels: 64
+
+training:
+  learning_rate: 0.001
+  patience: 5
+  epochs: 100
+  batch_size: 32
+  start_epoch: 1
+  save_every: 3
+  per_channel_mean: [0.5, 0.5, 0.5]
+
+checkpoint:
+  continue: true
+  id: "2025-03-26_06-16-57"
+  type: best
