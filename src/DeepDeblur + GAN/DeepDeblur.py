@@ -85,11 +85,8 @@ class DeepDeblur(nn.Module):
 
 
         b3, u3 = self.finer_level_network(blur_tensors[-1])
-        print("passed network 1")
         b2, u2 = self.intermediate_level_network(blur_tensors[-2], u3)
-        print("passed network 2")
         b1, _ = self.coarse_level_network(blur_tensors[-3], u2)
-        print("passed network 3")
         
         b3 = b3 + self.per_channel_mean
         b2 = b2 + self.per_channel_mean
