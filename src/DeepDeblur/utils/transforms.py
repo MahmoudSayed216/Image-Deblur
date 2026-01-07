@@ -47,9 +47,3 @@ def apply_transforms(b_img: Image, s_img: Image):
 
     return b_img, s_img
 
-
-# add_gaussian_noise()
-img = Image.open("/home/mahmoud-sayed/Desktop/Datasets/oxford flowers/dataset/train/2/image_05104.jpg")
-apply_transforms(img, img)
-
-img.close()
