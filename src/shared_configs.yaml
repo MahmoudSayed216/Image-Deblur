@@ -10,4 +10,4 @@ environment:
     local: "output"
   debugger_active: true
 
-device: cpu
+device: cuda
