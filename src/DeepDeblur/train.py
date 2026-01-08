@@ -187,7 +187,8 @@ def compute_test_metrics(model, loss_fn, device, test_loader) -> tuple[float, fl
     ssim_score = 0
     n_examples = 0
     ssim_calc = SSIM(device)
-    
+    sampels = []
+    j = 0
     with torch.no_grad():
         for i, ((_256b, _128b, _64b), (_256s, _128s, _64s)) in enumerate(test_loader):
             _256b = _256b.to(device)
@@ -209,12 +210,14 @@ def compute_test_metrics(model, loss_fn, device, test_loader) -> tuple[float, fl
             three_scales_mse+=total_loss.item()
             high_scale_mse+=_256loss.item()
             n_examples+=1
+            if n_examples < 3:
+                sampels.append(_256g)
 
     three_scales_avg_mse = three_scales_mse/n_examples
     high_scale_avg_mse = high_scale_mse/n_examples
     psnr = PSNR(three_scales_mse, max_val=0.5)
     ssim = ssim_score/n_examples
-    return three_scales_avg_mse, high_scale_avg_mse, psnr, ssim
+    return three_scales_avg_mse, high_scale_avg_mse, psnr, ssim, sampels
 
 
 
@@ -271,7 +274,7 @@ def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: d
         #TODO: compute average epoch loss
         avg_train_mse = epoch_cummulative_loss/steps
         #TODO: compute test mse
-        three_scales_test_mse, high_scale_test_mse, psnr, ssim = compute_test_metrics(model, loss_fn, DEVICE, test_loader)
+        three_scales_test_mse, high_scale_test_mse, psnr, ssim, samples = compute_test_metrics(model, loss_fn, DEVICE, test_loader)
         #TODO: log all numbers
         logger.log(f"Average Train MSE = {avg_train_mse:.3f}")
         logger.log(f"High scale test MSE = {high_scale_test_mse:.3f}")
@@ -282,10 +285,12 @@ def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: d
 
         if cp_handler.check_save_every(epoch):
             logger.checkpoint(f"{SAVE_EVERY} epochs have passed, saving data in last.pth")
-            cp_handler.save_model()
+            cp_handler.save_model(model=model, optim=optim, epoch=epoch, preds=samples, loss=three_scales_test_mse, save_type='last')
         if cp_handler.metric_has_improved(psnr):
             logger.checkpoint(f"metric has improved, saving data in best.pth")
             cp_handler.save_model()
+            cp_handler.save_model(model=model, optim=optim, epoch=epoch, preds=samples, loss=three_scales_test_mse, save_type='best')
+
 
 
 
