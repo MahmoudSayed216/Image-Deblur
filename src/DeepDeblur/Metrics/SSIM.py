@@ -1,6 +1,12 @@
+import torch
 from torchmetrics import StructuralSimilarityIndexMeasure
 
 
-def SSIM(im1, im2):
-    ssim = StructuralSimilarityIndexMeasure(data_range=1.0)
-    ssim_val = ssim(im1, im2)
+
+class SSIM:
+    def __init__(self, device):
+        self.ssim = StructuralSimilarityIndexMeasure(data_range=1.0).to(device)
+
+    def calculate(self, im1: torch.Tensor, im2: torch.Tensor):
+        ssim_val = self.ssim(im1, im2)
+        return ssim_val

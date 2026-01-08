@@ -186,6 +186,8 @@ def compute_test_metrics(model, loss_fn, device, test_loader) -> tuple[float, fl
     high_scale_mse = 0
     ssim_score = 0
     n_examples = 0
+    ssim_calc = SSIM(device)
+    
     with torch.no_grad():
         for i, ((_256b, _128b, _64b), (_256s, _128s, _64s)) in enumerate(test_loader):
             _256b = _256b.to(device)
@@ -203,14 +205,14 @@ def compute_test_metrics(model, loss_fn, device, test_loader) -> tuple[float, fl
             _64loss = loss_fn(_64g, _64s) / (64*64*3)
             total_loss = _256loss + _128loss + _64loss
 
-            ssim_score += SSIM(_256g, _256s) 
+            ssim_score += ssim_calc.calculate(_256g, _256s) 
             three_scales_mse+=total_loss.item()
             high_scale_mse+=_256loss.item()
             n_examples+=1
 
     three_scales_avg_mse = three_scales_mse/n_examples
     high_scale_avg_mse = high_scale_mse/n_examples
-    psnr = PSNR(three_scales_mse, max_val=1)
+    psnr = PSNR(three_scales_mse, max_val=0.5)
     ssim = ssim_score/n_examples
     return three_scales_avg_mse, high_scale_avg_mse, psnr, ssim
 
@@ -227,6 +229,7 @@ def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: d
     START_EPOCH = training_configs["training"]["start_epoch"] #! gets overriden if ["checkpoint"]["continue"] is true
     DEVICE = shared_configs["device"]
     MODEL_NAME = training_configs["model"]["name"]
+
     weights_saving_path = os.path.join(session_path, "weights")
     cp_handler = CheckpointsHandler(save_every=SAVE_EVERY, increasing_metric=True, output_path=weights_saving_path)
 
