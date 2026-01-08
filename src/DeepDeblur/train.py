@@ -288,7 +288,6 @@ def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: d
             cp_handler.save_model(model=model, optim=optim, epoch=epoch, preds=samples, loss=three_scales_test_mse, save_type='last')
         if cp_handler.metric_has_improved(psnr):
             logger.checkpoint(f"metric has improved, saving data in best.pth")
-            cp_handler.save_model()
             cp_handler.save_model(model=model, optim=optim, epoch=epoch, preds=samples, loss=three_scales_test_mse, save_type='best')
 
 
@@ -312,15 +311,6 @@ def main():
     #TODO: LOG ALL CONFIGS AND SESSION PATH BEFORE STARTING
     log_all_configs(logger=logger, session_path=session_path, training_configs=training_configs, shared_configs=shared_configs)
     # print(os.listdir(session_path))
-    logger.debug("HI from train.py")
-    logger.log("HI FROM train.py")
-    logger.checkpoint("HI from train.py")
-    logger.log("HI FROM train.py")
-    logger.checkpoint("HI from train.py")
-    logger.debug("HI from train.py")
-    logger.checkpoint("HI from train.py")
-    logger.log("HI FROM train.py")
-    logger.checkpoint("HI from train.py")
     # * REVIEW THE TRANSFORMS DONE IN THE TRAINING SECTION
     train_loader, test_loader = create_data_loaders(dataset_path, training_configs, shared_configs)
 
