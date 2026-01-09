@@ -261,8 +261,6 @@ def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: d
             
             mx = max(mx, _256g.max())
             mn = min(mn, _256g.min())
-            logger.debug(f"Minimum value in output tensors: {mn}")
-            logger.debug(f"Maximum value in output tensors: {mx}")
             _256loss = loss_fn(_256g, _256s) / (256*256*3)
             _128loss = loss_fn(_128g, _128s) / (128*128*3)
             _64loss = loss_fn(_64g, _64s) / (64*64*3)
@@ -276,17 +274,15 @@ def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: d
             # if i % 20:
                 # logger.log(f"epoch: {epoch} big_step: {i}")
         
-        #TODO: compute average epoch loss
         avg_train_mse = epoch_cummulative_loss/steps
-        #TODO: compute test mse
         three_scales_test_mse, high_scale_test_mse, psnr, ssim, samples = compute_test_metrics(model, loss_fn, DEVICE, test_loader)
-        #TODO: log all numbers
         logger.log(f"Average Train MSE = {avg_train_mse:.3f}")
         logger.log(f"High scale test MSE = {high_scale_test_mse:.3f}")
         logger.log(f"3 scales test MSE = {three_scales_test_mse:.3f}")
         logger.log(f"PSNR: {psnr:.3f}")
         logger.log(f"SSIM: {ssim:.3f}")
-        #TODO: Checkpoint Handler
+        logger.debug(f"Minimum value in output tensors: {mn}")
+        logger.debug(f"Maximum value in output tensors: {mx}")
 
         if cp_handler.check_save_every(epoch):
             logger.checkpoint(f"{SAVE_EVERY} epochs have passed, saving data in last.pth")
