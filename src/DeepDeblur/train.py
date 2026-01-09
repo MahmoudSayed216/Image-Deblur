@@ -180,7 +180,7 @@ def create_data_loaders(dataset_path: str, training_configs: dict, shared_config
 
 
 #TODO: implement this function
-def compute_test_metrics(model, loss_fn, device, test_loader) -> tuple[float, float]:
+def compute_test_metrics(model, loss_fn, device, test_loader, mx) -> tuple[float, float]:
     model.eval()
     three_scales_mse = 0
     high_scale_mse = 0
@@ -214,7 +214,7 @@ def compute_test_metrics(model, loss_fn, device, test_loader) -> tuple[float, fl
 
     three_scales_avg_mse = three_scales_mse/n_examples
     high_scale_avg_mse = high_scale_mse/n_examples
-    psnr = PSNR(three_scales_mse, max_val=0.5)
+    psnr = PSNR(three_scales_mse, max_val=mx)
     ssim = ssim_score/n_examples
     return three_scales_avg_mse, high_scale_avg_mse, psnr, ssim, sampels
 
@@ -242,6 +242,7 @@ def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: d
 
     logger.log(f"Training {MODEL_NAME} starting for {EPOCHS-START_EPOCH+1} epochs, Learning rate = {LEARNING_RATE}, with AdamW optimizer") #! optim must be accessed through configs
     mx = float('-inf')
+    mx2 = float('-inf')
     mn = float('inf')
     for epoch in range(START_EPOCH, EPOCHS+1):
         logger.log(f"Epoch: {epoch}")
@@ -260,6 +261,7 @@ def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: d
             
             
             mx = max(mx, _256g.max())
+            mx2 = max(mx2, _256s.max())
             mn = min(mn, _256g.min())
             _256loss = loss_fn(_256g, _256s) / (256*256*3)
             _128loss = loss_fn(_128g, _128s) / (128*128*3)
@@ -275,12 +277,12 @@ def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: d
                 # logger.log(f"epoch: {epoch} big_step: {i}")
         
         avg_train_mse = epoch_cummulative_loss/steps
-        three_scales_test_mse, high_scale_test_mse, psnr, ssim, samples = compute_test_metrics(model, loss_fn, DEVICE, test_loader)
-        logger.log(f"Average Train MSE = {avg_train_mse:.3f}")
-        logger.log(f"High scale test MSE = {high_scale_test_mse:.3f}")
-        logger.log(f"3 scales test MSE = {three_scales_test_mse:.3f}")
-        logger.log(f"PSNR: {psnr:.3f}")
-        logger.log(f"SSIM: {ssim:.3f}")
+        three_scales_test_mse, high_scale_test_mse, psnr, ssim, samples = compute_test_metrics(model, loss_fn, DEVICE, test_loader, mx2)
+        logger.log(f"Average Train MSE = {avg_train_mse:.6f}")
+        logger.log(f"High scale test MSE = {high_scale_test_mse:.6f}")
+        logger.log(f"3 scales test MSE = {three_scales_test_mse:.6f}")
+        logger.log(f"PSNR: {psnr:.6f}")
+        logger.log(f"SSIM: {ssim:.6f}")
         logger.debug(f"Minimum value in output tensors: {mn}")
         logger.debug(f"Maximum value in output tensors: {mx}")
 
