@@ -188,7 +188,6 @@ def compute_test_metrics(model, loss_fn, device, test_loader) -> tuple[float, fl
     n_examples = 0
     ssim_calc = SSIM(device)
     sampels = []
-    j = 0
     with torch.no_grad():
         for i, ((_256b, _128b, _64b), (_256s, _128s, _64s)) in enumerate(test_loader):
             _256b = _256b.to(device)
@@ -242,7 +241,8 @@ def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: d
     
 
     logger.log(f"Training {MODEL_NAME} starting for {EPOCHS-START_EPOCH+1} epochs, Learning rate = {LEARNING_RATE}, with AdamW optimizer") #! optim must be accessed through configs
-
+    mx = float('-inf')
+    mn = float('inf')
     for epoch in range(START_EPOCH, EPOCHS+1):
         logger.log(f"Epoch: {epoch}")
         epoch_cummulative_loss = 0
@@ -258,6 +258,11 @@ def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: d
 
             _256g, _128g, _64g = model([_256b, _128b, _64b])
             
+            
+            mx = max(mx, _256g.max())
+            mn = min(mn, _256g.min())
+            logger.debug(f"Minimum value in output tensors: {mn}")
+            logger.debug(f"Maximum value in output tensors: {mx}")
             _256loss = loss_fn(_256g, _256s) / (256*256*3)
             _128loss = loss_fn(_128g, _128s) / (128*128*3)
             _64loss = loss_fn(_64g, _64s) / (64*64*3)

@@ -30,7 +30,7 @@ class ResBlock(nn.Module):
         _x = self.activation(_x)
         _x = self.conv2(_x)
 
-        return _x+x
+        return (_x+x)/2
 
 class Network(nn.Module):
     #! change the name of the finer network param

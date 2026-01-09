@@ -1,50 +1,10 @@
-# from .GoProDataset import GoProDataset
-# # from DeepDeblur import DeepDeblur
-# from .model.DeepDeblur import DeepDeblur
-# import torchvision.transforms as T
-# from .utils.transforms import apply_transforms
+import torch
 
-# train_configs = {
-#     "training": {"per_channel_mean": [0.1,0.2,0.3]},
-#     "model": {"n_channels": 64}
-# }
+ckpt = torch.load("best.pth", map_location="cpu")
 
-# shared_configs = {
-#     "device": "cpu"
-# }
-
-# # train_transforms = T.Compose([    
-# #     T.ToTensor(),
-# #     T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-# #     ])
-# ds = GoProDataset("/home/mahmoud-sayed/Desktop/Datasets/Gopro Dataset", split="test", transforms=None)
-
-# (x, y, z), (a, b, c) = ds.__getitem__(0)
+preds = ckpt["preds"]   # this is your list of tensors
 
 
-# print("x.shape: ", x.shape)
-# print("y.shape: ", y.shape)
-# print("z.shape: ", z.shape)
-# print("a.shape: ", a.shape)
-# print("b.shape: ", b.shape)
-# print("c.shape: ", c.shape)
 
-# model = DeepDeblur(train_configs=train_configs, shared_configs=shared_configs)
-# nparams = sum(p.numel() for p in model.parameters())
-
-# print(nparams)
-
-# x = x.unsqueeze(0)
-# y= y.unsqueeze(0)
-# z = z.unsqueeze(0)
-
-# _1, _2, _3 = model([x, y, z])
-
-# print(_1.shape)
-# print(_2.shape)
-# print(_3.shape)
-
-x = [((1,2),(2,3)), ((3,3),(3,3)), ((5,4),(5,3)),]
-
-for i, (x1, x2) in enumerate(x, 0):
-    print(i, x1, x2)
+print(preds[0].shape, preds[0].min(), preds[0].max())
+print(preds[1].shape, preds[1].min(), preds[1].max())
