@@ -13,7 +13,8 @@ from .GoProDataset import GoProDataset
 from .logger import Logger
 from .CheckpointsHandler import CheckpointsHandler
 from torch.nn import MSELoss
-from torch.optim import AdamW
+from torch.optim import Adam
+from torch.optim.lr_scheduler import StepLR
 from .model.DeepDeblur import DeepDeblur
 from .Metrics import PSNR, SSIM
 
@@ -219,7 +220,9 @@ def compute_test_metrics(model, loss_fn, device, test_loader, mx) -> tuple[float
     return three_scales_avg_mse, high_scale_avg_mse, psnr, ssim, sampels
 
 
-
+def load_checkpoint_state_dict(checkpoint_id):
+    
+    pass
 
     
 #TODO: implement this function
@@ -231,19 +234,28 @@ def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: d
     START_EPOCH = training_configs["training"]["start_epoch"] #! gets overriden if ["checkpoint"]["continue"] is true
     DEVICE = shared_configs["device"]
     MODEL_NAME = training_configs["model"]["name"]
+    LR_REDUCTION_FACTOR = training_configs["training"]["gamma"]
+    LR_REDUCE_AFTER = training_configs["training"]["reduce_lr_after"]
+
 
     weights_saving_path = os.path.join(session_path, "weights")
     cp_handler = CheckpointsHandler(save_every=SAVE_EVERY, increasing_metric=True, output_path=weights_saving_path)
 
     model = DeepDeblur(train_configs=training_configs, shared_configs=shared_configs).to(DEVICE)
     loss_fn = MSELoss()
-    optim = AdamW(params=model.parameters(), lr=LEARNING_RATE)
-    
+    optim = Adam(params=model.parameters(), lr=LEARNING_RATE)
+    scheduler = StepLR(optimizer=optim, step_size=LR_REDUCE_AFTER, gamma=LR_REDUCTION_FACTOR)
+
+    if training_configs["checkpoint"]["continue"]:
+        checkpoint_id = training_configs["checkpoint"]["id"]
+        state_dict = load_checkpoint_state_dict(checkpoint_id)
+        pass
 
     logger.log(f"Training {MODEL_NAME} starting for {EPOCHS-START_EPOCH+1} epochs, Learning rate = {LEARNING_RATE}, with AdamW optimizer") #! optim must be accessed through configs
     mx = float('-inf')
     mx2 = float('-inf')
     mn = float('inf')
+    mn2 = float('inf')
     for epoch in range(START_EPOCH, EPOCHS+1):
         logger.log(f"Epoch: {epoch}")
         epoch_cummulative_loss = 0
@@ -263,6 +275,7 @@ def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: d
             mx = max(mx, _256g.max())
             mx2 = max(mx2, _256s.max())
             mn = min(mn, _256g.min())
+            mn2 = min(mn2, _256s.min())
             _256loss = loss_fn(_256g, _256s) / (256*256*3)
             _128loss = loss_fn(_128g, _128s) / (128*128*3)
             _64loss = loss_fn(_64g, _64s) / (64*64*3)
@@ -285,6 +298,8 @@ def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: d
         logger.log(f"SSIM: {ssim:.6f}")
         logger.debug(f"Minimum value in output tensors: {mn}")
         logger.debug(f"Maximum value in output tensors: {mx}")
+        logger.debug(f"Minimum value in GT tensors: {mn2}")
+        logger.debug(f"Maximum value in GT tensors: {mx2}")
 
         if cp_handler.check_save_every(epoch):
             logger.checkpoint(f"{SAVE_EVERY} epochs have passed, saving data in last.pth")
