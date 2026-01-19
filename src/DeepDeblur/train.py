@@ -259,9 +259,10 @@ def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: d
     SCALES = 3
 
     logger.log(f"Training {MODEL_NAME} starting for {EPOCHS-START_EPOCH+1} epochs, Learning rate = {LEARNING_RATE}, with Adam optimizer") #! optim must be accessed through configs
-    mx = float('inf') 
-    mn = -float('inf')
+    mx = -float('inf') 
+    mn = float('inf')
     for epoch in range(START_EPOCH, EPOCHS+1):
+        model.train()
         logger.log(f"Epoch: {epoch}")
         epoch_cummulative_loss = 0
         steps = 0
@@ -307,7 +308,7 @@ def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: d
 
         if cp_handler.check_save_every(epoch):
             logger.checkpoint(f"{SAVE_EVERY} epochs have passed, saving data in last.pth")
-            cp_handler.save_model(model=model, optim=optim, sched=scheduler, epoch=epoch, preds=samples, loss=three_scales_test_mse, save_type='last')
+            cp_handler.save_model(model=model, optim=optim, sched=scheduler, psnr=psnr, epoch=epoch, preds=samples, loss=three_scales_test_mse, save_type='last')
         if cp_handler.metric_has_improved(psnr):
             logger.checkpoint(f"metric has improved, saving data in best.pth")
             cp_handler.save_model(model=model, optim=optim, sched=scheduler, psnr=psnr, epoch=epoch, preds=samples, loss=three_scales_test_mse, save_type='best')
