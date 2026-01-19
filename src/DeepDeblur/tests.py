@@ -1,6 +1,6 @@
 import torch
 
-ckpt = torch.load("best.pth", map_location="cpu")
+ckpt = torch.load("output/best.pth", map_location="cpu")
 
 preds = ckpt["preds"]   # this is your list of tensors
 

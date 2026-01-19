@@ -172,7 +172,7 @@ def create_data_loaders(dataset_path: str, training_configs: dict, shared_config
     test_ds = GoProDataset(dataset_path, split="test", transforms=None)
     device = shared_configs["device"]
     train_loader = DataLoader(dataset=train_ds, num_workers=5, shuffle=True, batch_size=training_configs["training"]["batch_size"], pin_memory=(device == "cuda"))
-    test_loader = DataLoader(dataset=test_ds, num_workers=5, shuffle=True, batch_size=1, pin_memory=True)
+    test_loader = DataLoader(dataset=test_ds, num_workers=5 , batch_size=1, pin_memory=(shared_configs["device"] == "cuda"))
 
     
     return train_loader, test_loader
@@ -215,14 +215,16 @@ def compute_test_metrics(model, loss_fn, device, test_loader, mx) -> tuple[float
 
     three_scales_avg_mse = three_scales_mse/n_examples
     high_scale_avg_mse = high_scale_mse/n_examples
-    psnr = PSNR(three_scales_mse, max_val=mx)
+    psnr = PSNR(three_scales_avg_mse, max_val=1)
     ssim = ssim_score/n_examples
     return three_scales_avg_mse, high_scale_avg_mse, psnr, ssim, sampels
 
 
-def load_checkpoint_state_dict(checkpoint_id):
-    
-    pass
+def load_checkpoint(session_path, state_type, device):
+    path_to_ckpt = os.path.join(session_path, 'weights', f'{state_type}.pth')
+    ckpt = torch.load(path_to_ckpt, map_location=device)
+
+    return ckpt
 
     
 #TODO: implement this function
@@ -231,37 +233,42 @@ def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: d
     EPOCHS = training_configs["training"]["epochs"]
     LEARNING_RATE = training_configs["training"]["learning_rate"]
     SAVE_EVERY = training_configs["training"]["save_every"]
-    START_EPOCH = training_configs["training"]["start_epoch"] #! gets overriden if ["checkpoint"]["continue"] is true
+    START_EPOCH = 0
     DEVICE = shared_configs["device"]
     MODEL_NAME = training_configs["model"]["name"]
     LR_REDUCTION_FACTOR = training_configs["training"]["gamma"]
     LR_REDUCE_AFTER = training_configs["training"]["reduce_lr_after"]
 
-
     weights_saving_path = os.path.join(session_path, "weights")
     cp_handler = CheckpointsHandler(save_every=SAVE_EVERY, increasing_metric=True, output_path=weights_saving_path)
-
     model = DeepDeblur(train_configs=training_configs, shared_configs=shared_configs).to(DEVICE)
-    loss_fn = MSELoss()
     optim = Adam(params=model.parameters(), lr=LEARNING_RATE)
     scheduler = StepLR(optimizer=optim, step_size=LR_REDUCE_AFTER, gamma=LR_REDUCTION_FACTOR)
+    loss_fn = MSELoss()
 
     if training_configs["checkpoint"]["continue"]:
-        checkpoint_id = training_configs["checkpoint"]["id"]
-        state_dict = load_checkpoint_state_dict(checkpoint_id)
-        pass
+        checkpoint_type = training_configs["checkpoint"]["type"]
 
-    logger.log(f"Training {MODEL_NAME} starting for {EPOCHS-START_EPOCH+1} epochs, Learning rate = {LEARNING_RATE}, with AdamW optimizer") #! optim must be accessed through configs
-    mx = float('-inf')
-    mx2 = float('-inf')
-    mn = float('inf')
-    mn2 = float('inf')
+        checkpoint = load_checkpoint(session_path, checkpoint_type, DEVICE)
+        model.load_state_dict(checkpoint["model"])
+        cp_handler.previous_best_value = checkpoint["score"]
+        optim.load_state_dict(checkpoint["optim"])
+        scheduler.load_state_dict(checkpoint["sched"])
+        START_EPOCH = checkpoint["epoch"]+1
+
+    SCALES = 3
+
+    logger.log(f"Training {MODEL_NAME} starting for {EPOCHS-START_EPOCH+1} epochs, Learning rate = {LEARNING_RATE}, with Adam optimizer") #! optim must be accessed through configs
+    mx = float('inf') 
+    mn = -float('inf')
     for epoch in range(START_EPOCH, EPOCHS+1):
         logger.log(f"Epoch: {epoch}")
         epoch_cummulative_loss = 0
         steps = 0
         for i, ((_256b, _128b, _64b), (_256s, _128s, _64s)) in enumerate(train_loader):
             # logger.debug(f"input_size: {_256b.shape}")
+            optim.zero_grad()
+
             _256b = _256b.to(DEVICE)
             _128b = _128b.to(DEVICE)
             _64b = _64b.to(DEVICE)
@@ -273,14 +280,12 @@ def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: d
             
             
             mx = max(mx, _256g.max())
-            mx2 = max(mx2, _256s.max())
             mn = min(mn, _256g.min())
-            mn2 = min(mn2, _256s.min())
             _256loss = loss_fn(_256g, _256s) / (256*256*3)
             _128loss = loss_fn(_128g, _128s) / (128*128*3)
             _64loss = loss_fn(_64g, _64s) / (64*64*3)
             
-            total_loss = _256loss + _128loss + _64loss
+            total_loss = (_256loss + _128loss + _64loss)/2*SCALES
             total_loss.backward()
             optim.step()
             
@@ -289,8 +294,9 @@ def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: d
             # if i % 20:
                 # logger.log(f"epoch: {epoch} big_step: {i}")
         
+        scheduler.step()
         avg_train_mse = epoch_cummulative_loss/steps
-        three_scales_test_mse, high_scale_test_mse, psnr, ssim, samples = compute_test_metrics(model, loss_fn, DEVICE, test_loader, mx2)
+        three_scales_test_mse, high_scale_test_mse, psnr, ssim, samples = compute_test_metrics(model, loss_fn, DEVICE, test_loader, 1)
         logger.log(f"Average Train MSE = {avg_train_mse:.6f}")
         logger.log(f"High scale test MSE = {high_scale_test_mse:.6f}")
         logger.log(f"3 scales test MSE = {three_scales_test_mse:.6f}")
@@ -298,15 +304,13 @@ def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: d
         logger.log(f"SSIM: {ssim:.6f}")
         logger.debug(f"Minimum value in output tensors: {mn}")
         logger.debug(f"Maximum value in output tensors: {mx}")
-        logger.debug(f"Minimum value in GT tensors: {mn2}")
-        logger.debug(f"Maximum value in GT tensors: {mx2}")
 
         if cp_handler.check_save_every(epoch):
             logger.checkpoint(f"{SAVE_EVERY} epochs have passed, saving data in last.pth")
-            cp_handler.save_model(model=model, optim=optim, epoch=epoch, preds=samples, loss=three_scales_test_mse, save_type='last')
+            cp_handler.save_model(model=model, optim=optim, sched=scheduler, epoch=epoch, preds=samples, loss=three_scales_test_mse, save_type='last')
         if cp_handler.metric_has_improved(psnr):
             logger.checkpoint(f"metric has improved, saving data in best.pth")
-            cp_handler.save_model(model=model, optim=optim, epoch=epoch, preds=samples, loss=three_scales_test_mse, save_type='best')
+            cp_handler.save_model(model=model, optim=optim, sched=scheduler, psnr=psnr, epoch=epoch, preds=samples, loss=three_scales_test_mse, save_type='best')
 
 
 
@@ -320,10 +324,15 @@ def main():
     if len(sys.argv) > 1:
         override_configs(training_configs, shared_configs, args)
 
-    dataset_path, output_path = resolve_paths(shared_configs)
+    dataset_path, output_path = resolve_paths(shared_configs, )
+    
+    if not training_configs["checkpoint"]["continue"]:
+        session_path = create_training_environment(output_path)
+    else:
+        session_path = os.path.join(output_path, training_configs["checkpoint"]["id"])
 
-    session_path = create_training_environment(output_path)
-    # logger = None
+
+
     logger = Logger(debug_mode=shared_configs["environment"]["debugger_active"], logs_folder_path=os.path.join(session_path, "logs"))
 
     #TODO: LOG ALL CONFIGS AND SESSION PATH BEFORE STARTING

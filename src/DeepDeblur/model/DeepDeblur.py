@@ -30,7 +30,7 @@ class ResBlock(nn.Module):
         _x = self.activation(_x)
         _x = self.conv2(_x)
 
-        return (_x+x)/2
+        return _x+x
 
 class Network(nn.Module):
     #! change the name of the finer network param
@@ -69,14 +69,14 @@ class DeepDeblur(nn.Module):
     def __init__(self, train_configs, shared_configs):
         super().__init__()
         #! PROBABLY NEEDS TO BE REVIEWED, THEY ARE SIMPLY SUBTRACTING 0.5 FROM EACH CHANNEL, NOT A PER CHANNEL AVERAGE
-        per_channel_mean = train_configs["training"]["per_channel_mean"]
         device = shared_configs["device"]
 
-        self.per_channel_mean = torch.tensor(per_channel_mean).view(1, 3, 1, 1).to(device=device)
+        # self.per_channel_mean = torch.tensor(per_channel_mean).view(1, 3, 1, 1).to(device=device)
+        self.per_channel_mean = train_configs["training"]["per_channel_mean"]
         self.coarse_level_network = Network(training_configs=train_configs, finer_network=False, upscale=True)
         self.intermediate_level_network = Network(training_configs=train_configs,finer_network=True, upscale=True)
         self.fine_level_network = Network(training_configs=train_configs,finer_network=True, upscale=False)
-
+        self
 
     def forward(self, blur_tensors):
         blur_tensors[-1] = blur_tensors[-1] - self.per_channel_mean

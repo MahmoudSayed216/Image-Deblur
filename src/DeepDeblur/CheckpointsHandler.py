@@ -21,14 +21,16 @@ class CheckpointsHandler:
                 return True
         return False
     
-    def save_model(self, model: torch.nn.Module , optim , epoch: int, preds: list[torch.Tensor], loss: float, save_type: str):
+    def save_model(self, model: torch.nn.Module , optim, sched , psnr,epoch: int, preds: list[torch.Tensor], loss: float, save_type: str):
         
         output_path = os.path.join(self.output_path, f"{save_type}.pth")
         torch.save({
             'model': model.state_dict(),
             'optim': optim.state_dict(),
+            'sched': sched.state_dict(),
             'epoch': epoch,
             'preds': preds,
-            'loss' : loss
+            'loss' : loss,
+            'score': psnr #model dependent
         }, output_path)
 

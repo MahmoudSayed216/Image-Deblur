@@ -70,7 +70,7 @@ class GoProDataset(Dataset):
                                         round(self.scaling_factor*self.cropped_region_side_length), 
                                     ])
         
-        _64_scale_blur  = F.resize(_128_scale_blur, size=
+        _64_scale_blur  = F.resize(_256_scale_blur, size=
                                     [
                                         round(self.scaling_factor*self.scaling_factor*self.cropped_region_side_length), 
                                         round(self.scaling_factor*self.scaling_factor*self.cropped_region_side_length), 
@@ -83,7 +83,7 @@ class GoProDataset(Dataset):
                                         round(self.scaling_factor*self.cropped_region_side_length), 
                                     ])
         
-        _64_scale_sharp  = F.resize(_128_scale_sharp, size=
+        _64_scale_sharp  = F.resize(_256_scale_blur, size=
                                     [
                                         round(self.scaling_factor*self.scaling_factor*self.cropped_region_side_length), 
                                         round(self.scaling_factor*self.scaling_factor*self.cropped_region_side_length), 
