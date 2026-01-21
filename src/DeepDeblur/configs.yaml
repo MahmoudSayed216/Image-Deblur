@@ -15,6 +15,6 @@ training:
 
 
 checkpoint:
-  continue: false
+  continue: true
   id: "2025-03-26_06-16-57"
   type: best

@@ -136,7 +136,7 @@ def create_training_environment(output_relative_path: str) -> str:
     weights_folder = os.path.join(session_path, "weights")
     os.mkdir(path=weights_folder)
 
-    return session_path
+    return session_path, session_id
 
 def log_all_configs(logger, session_path, training_configs, shared_configs):
     key_val_pairs =  []
@@ -220,15 +220,16 @@ def compute_test_metrics(model, loss_fn, device, test_loader, mx) -> tuple[float
     return three_scales_avg_mse, high_scale_avg_mse, psnr, ssim, sampels
 
 
-def load_checkpoint(session_path, state_type, device):
-    path_to_ckpt = os.path.join(session_path, 'weights', f'{state_type}.pth')
+def load_checkpoint(session_path: str, state_type, device, model_name, session_id, checkpoint_id):
+    session_path = session_path.replace(session_id, checkpoint_id)
+    path_to_ckpt = os.path.join(os.getcwd(), f'src/{model_name}',session_path, 'weights', f'{state_type}.pth')
+    print(f"[[[{path_to_ckpt}]]]")
     ckpt = torch.load(path_to_ckpt, map_location=device)
-
     return ckpt
 
     
 #TODO: implement this function
-def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: dict, shared_configs: dict, session_path: str, logger: Logger):
+def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: dict, shared_configs: dict, session_path: str, session_id: str, logger: Logger):
 
     EPOCHS = training_configs["training"]["epochs"]
     LEARNING_RATE = training_configs["training"]["learning_rate"]
@@ -240,16 +241,16 @@ def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: d
     LR_REDUCE_AFTER = training_configs["training"]["reduce_lr_after"]
 
     weights_saving_path = os.path.join(session_path, "weights")
+
     cp_handler = CheckpointsHandler(save_every=SAVE_EVERY, increasing_metric=True, output_path=weights_saving_path)
     model = DeepDeblur(train_configs=training_configs, shared_configs=shared_configs).to(DEVICE)
     optim = Adam(params=model.parameters(), lr=LEARNING_RATE)
     scheduler = StepLR(optimizer=optim, step_size=LR_REDUCE_AFTER, gamma=LR_REDUCTION_FACTOR)
     loss_fn = MSELoss()
-
+    logger.debug(string=f"Session path: {session_path}")
     if training_configs["checkpoint"]["continue"]:
         checkpoint_type = training_configs["checkpoint"]["type"]
-
-        checkpoint = load_checkpoint(session_path, checkpoint_type, DEVICE)
+        checkpoint = load_checkpoint(session_path, checkpoint_type, DEVICE, model_name=training_configs["model"]["name"], session_id=session_id, checkpoint_id=training_configs["checkpoint"]["id"])
         model.load_state_dict(checkpoint["model"])
         cp_handler.previous_best_value = checkpoint["score"]
         optim.load_state_dict(checkpoint["optim"])
@@ -258,7 +259,7 @@ def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: d
 
     SCALES = 3
 
-    logger.log(f"Training {MODEL_NAME} starting for {EPOCHS-START_EPOCH+1} epochs, Learning rate = {LEARNING_RATE}, with Adam optimizer") #! optim must be accessed through configs
+    logger.log(f"Training {MODEL_NAME} starting for {EPOCHS-START_EPOCH} epochs, Learning rate = {LEARNING_RATE}, with Adam optimizer") #! optim must be accessed through configs
     mx = -float('inf') 
     mn = float('inf')
     for epoch in range(START_EPOCH, EPOCHS+1):
@@ -298,11 +299,11 @@ def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: d
         scheduler.step()
         avg_train_mse = epoch_cummulative_loss/steps
         three_scales_test_mse, high_scale_test_mse, psnr, ssim, samples = compute_test_metrics(model, loss_fn, DEVICE, test_loader, 1)
-        logger.log(f"Average Train MSE = {avg_train_mse:.6f}")
-        logger.log(f"High scale test MSE = {high_scale_test_mse:.6f}")
-        logger.log(f"3 scales test MSE = {three_scales_test_mse:.6f}")
-        logger.log(f"PSNR: {psnr:.6f}")
-        logger.log(f"SSIM: {ssim:.6f}")
+        logger.log(f"Average Train MSE = {avg_train_mse:.12f}")
+        logger.log(f"High scale test MSE = {high_scale_test_mse:.12f}")
+        logger.log(f"3 scales test MSE = {three_scales_test_mse:.12f}")
+        logger.log(f"PSNR: {psnr}")
+        logger.log(f"SSIM: {ssim}")
         logger.debug(f"Minimum value in output tensors: {mn}")
         logger.debug(f"Maximum value in output tensors: {mx}")
 
@@ -327,14 +328,15 @@ def main():
 
     dataset_path, output_path = resolve_paths(shared_configs, )
     
-    if not training_configs["checkpoint"]["continue"]:
-        session_path = create_training_environment(output_path)
-    else:
-        session_path = os.path.join(output_path, training_configs["checkpoint"]["id"])
-
-
+    # if not training_configs["checkpoint"]["continue"]:
+    session_path, session_id = create_training_environment(output_path)
+        # print(session_path)
+    # else:
+        # session_path = os.path.join(output_path, training_configs["checkpoint"]["id"])
 
     logger = Logger(debug_mode=shared_configs["environment"]["debugger_active"], logs_folder_path=os.path.join(session_path, "logs"))
+
+
 
     #TODO: LOG ALL CONFIGS AND SESSION PATH BEFORE STARTING
     log_all_configs(logger=logger, session_path=session_path, training_configs=training_configs, shared_configs=shared_configs)
@@ -342,7 +344,7 @@ def main():
     # * REVIEW THE TRANSFORMS DONE IN THE TRAINING SECTION
     train_loader, test_loader = create_data_loaders(dataset_path, training_configs, shared_configs)
 
-    train(train_loader = train_loader,test_loader =  test_loader, training_configs=training_configs, shared_configs=shared_configs, session_path=session_path, logger=logger)
+    train(train_loader = train_loader,test_loader =  test_loader, training_configs=training_configs, shared_configs=shared_configs, session_path=session_path, session_id=session_id,logger=logger)
 
 
 if __name__ == "__main__":
