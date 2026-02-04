@@ -8,7 +8,7 @@ import random
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
-
+import torch
 
 class GoProDataset(Dataset):
     def __init__(self, data_path: str, split:str=Literal["train", "test"], transforms = None):
@@ -55,9 +55,8 @@ class GoProDataset(Dataset):
         _256_scale_sharp = sharp_image.crop(crop_points)
         _256_scale_blur = blur_image.crop(crop_points)
 
-
+        
         if self.transforms is not None:
-            #! DIFFERENT RANDOM TRANSFORMS MAY BE APPLIED ON EACH IMAGE
             # _256_scale_sharp = self.transforms(_256_scale_sharp)
             # _256_scale_blur = self.transforms(_256_scale_blur)
             _256_scale_blur, _256_scale_sharp = self.transforms(_256_scale_blur,_256_scale_sharp )
@@ -83,7 +82,7 @@ class GoProDataset(Dataset):
                                         round(self.scaling_factor*self.cropped_region_side_length), 
                                     ])
         
-        _64_scale_sharp  = F.resize(_256_scale_blur, size=
+        _64_scale_sharp  = F.resize(_256_scale_sharp, size=
                                     [
                                         round(self.scaling_factor*self.scaling_factor*self.cropped_region_side_length), 
                                         round(self.scaling_factor*self.scaling_factor*self.cropped_region_side_length), 

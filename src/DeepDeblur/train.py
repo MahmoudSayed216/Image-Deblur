@@ -203,10 +203,11 @@ def compute_test_metrics(model, loss_fn, device, test_loader, mx) -> tuple[float
 
             _256g, _128g, _64g = model([_256b, _128b, _64b])
 
-            _256loss = loss_fn(_256g, _256s) / (256*256*3)
-            _128loss = loss_fn(_128g, _128s) / (128*128*3)
-            _64loss = loss_fn(_64g, _64s) / (64*64*3)
-            total_loss = _256loss + _128loss + _64loss
+            _256loss = loss_fn(_256g, _256s)
+            _128loss = loss_fn(_128g, _128s)
+            _64loss = loss_fn(_64g, _64s)
+
+            total_loss = (_256loss + _128loss + _64loss)/3
 
             ssim_score += ssim_calc.calculate(_256g, _256s) 
             three_scales_mse+=total_loss.item()
@@ -286,11 +287,11 @@ def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: d
             
             mx = max(mx, _256g.max())
             mn = min(mn, _256g.min())
-            _256loss = loss_fn(_256g, _256s) / (256*256*3)
-            _128loss = loss_fn(_128g, _128s) / (128*128*3)
-            _64loss = loss_fn(_64g, _64s) / (64*64*3)
+            _256loss = loss_fn(_256g, _256s)
+            _128loss = loss_fn(_128g, _128s)
+            _64loss = loss_fn(_64g, _64s)
             
-            total_loss = (_256loss + _128loss + _64loss)/2*SCALES
+            total_loss = (_256loss + _128loss + _64loss)/(2*SCALES)
             total_loss.backward()
             optim.step()
             
