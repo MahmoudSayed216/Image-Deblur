@@ -8,7 +8,7 @@ import torch
 from torch.utils.data import DataLoader
 import torchvision.transforms as T
 from torchvision.transforms import functional as F
-from .utils.transforms import apply_transforms
+from .utils.transforms import augment_patch
 from .GoProDataset import GoProDataset
 from .logger import Logger
 from .CheckpointsHandler import CheckpointsHandler
@@ -168,7 +168,7 @@ def log_all_configs(logger, session_path, training_configs, shared_configs):
 
 #TODO: implement this function
 def create_data_loaders(dataset_path: str, training_configs: dict, shared_configs: dict) -> tuple[DataLoader, DataLoader]:
-    train_ds = GoProDataset(dataset_path, split="train", transforms=apply_transforms)
+    train_ds = GoProDataset(dataset_path, split="train", transforms=augment_patch)
     test_ds = GoProDataset(dataset_path, split="test", transforms=None)
 
     device = shared_configs["device"]
