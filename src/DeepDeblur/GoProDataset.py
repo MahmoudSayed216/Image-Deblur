@@ -57,7 +57,7 @@ class GoProDataset(Dataset):
 
 
         if self.transforms is not None:
-            #! DIFFERENT RANDOM TRANSFORMS MAY BE DONE FOR EACH IMAGE
+            #! DIFFERENT RANDOM TRANSFORMS MAY BE APPLIED ON EACH IMAGE
             # _256_scale_sharp = self.transforms(_256_scale_sharp)
             # _256_scale_blur = self.transforms(_256_scale_blur)
             _256_scale_blur, _256_scale_sharp = self.transforms(_256_scale_blur,_256_scale_sharp )

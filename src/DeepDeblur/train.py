@@ -170,7 +170,9 @@ def log_all_configs(logger, session_path, training_configs, shared_configs):
 def create_data_loaders(dataset_path: str, training_configs: dict, shared_configs: dict) -> tuple[DataLoader, DataLoader]:
     train_ds = GoProDataset(dataset_path, split="train", transforms=apply_transforms)
     test_ds = GoProDataset(dataset_path, split="test", transforms=None)
+
     device = shared_configs["device"]
+    
     train_loader = DataLoader(dataset=train_ds, num_workers=5, shuffle=True, batch_size=training_configs["training"]["batch_size"], pin_memory=(device == "cuda"))
     test_loader = DataLoader(dataset=test_ds, num_workers=5 , batch_size=1, pin_memory=(shared_configs["device"] == "cuda"))
 
@@ -239,6 +241,7 @@ def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: d
     MODEL_NAME = training_configs["model"]["name"]
     LR_REDUCTION_FACTOR = training_configs["training"]["gamma"]
     LR_REDUCE_AFTER = training_configs["training"]["reduce_lr_after"]
+    SCALES = 3
 
     weights_saving_path = os.path.join(session_path, "weights")
 
@@ -248,6 +251,7 @@ def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: d
     scheduler = StepLR(optimizer=optim, step_size=LR_REDUCE_AFTER, gamma=LR_REDUCTION_FACTOR)
     loss_fn = MSELoss()
     logger.debug(string=f"Session path: {session_path}")
+
     if training_configs["checkpoint"]["continue"]:
         checkpoint_type = training_configs["checkpoint"]["type"]
         checkpoint = load_checkpoint(session_path, checkpoint_type, DEVICE, model_name=training_configs["model"]["name"], session_id=session_id, checkpoint_id=training_configs["checkpoint"]["id"])
@@ -257,12 +261,11 @@ def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: d
         scheduler.load_state_dict(checkpoint["sched"])
         START_EPOCH = checkpoint["epoch"]+1
 
-    SCALES = 3
 
     logger.log(f"Training {MODEL_NAME} starting for {EPOCHS-START_EPOCH} epochs, Learning rate = {LEARNING_RATE}, with Adam optimizer") #! optim must be accessed through configs
-    mx = -float('inf') 
-    mn = float('inf')
     for epoch in range(START_EPOCH, EPOCHS+1):
+        mx = -float('inf') 
+        mn = float('inf')
         model.train()
         logger.log(f"Epoch: {epoch}")
         epoch_cummulative_loss = 0
@@ -326,13 +329,9 @@ def main():
     if len(sys.argv) > 1:
         override_configs(training_configs, shared_configs, args)
 
-    dataset_path, output_path = resolve_paths(shared_configs, )
+    dataset_path, output_path = resolve_paths(shared_configs)
     
-    # if not training_configs["checkpoint"]["continue"]:
     session_path, session_id = create_training_environment(output_path)
-        # print(session_path)
-    # else:
-        # session_path = os.path.join(output_path, training_configs["checkpoint"]["id"])
 
     logger = Logger(debug_mode=shared_configs["environment"]["debugger_active"], logs_folder_path=os.path.join(session_path, "logs"))
 
