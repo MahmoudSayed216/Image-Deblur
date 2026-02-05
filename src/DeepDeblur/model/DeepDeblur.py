@@ -1,8 +1,6 @@
 import torch
 import torch.nn as nn
 
-#! MISSING: PIXELSHUFFLE FOR UPSAMPLING
-#! MISSING: MEAN SHIFT
 
 class UpConv(nn.Module):
     def __init__(self):
