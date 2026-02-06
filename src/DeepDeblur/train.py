@@ -168,8 +168,8 @@ def log_all_configs(logger, session_path, training_configs, shared_configs):
 
 #TODO: implement this function
 def create_data_loaders(dataset_path: str, training_configs: dict, shared_configs: dict) -> tuple[DataLoader, DataLoader]:
-    train_ds = GoProDataset(dataset_path, split="train", transforms=augment_patch)
-    test_ds = GoProDataset(dataset_path, split="test", transforms=None)
+    train_ds = GoProDataset(dataset_path, split="train", crops=True,transforms=augment_patch)
+    test_ds = GoProDataset(dataset_path, split="test", crops=False, transforms=None)
 
     device = shared_configs["device"]
     

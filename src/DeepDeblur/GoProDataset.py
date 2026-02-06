@@ -11,7 +11,7 @@ import matplotlib.patches as patches
 import torch
 
 class GoProDataset(Dataset):
-    def __init__(self, data_path: str, split:str=Literal["train", "test"], transforms = None):
+    def __init__(self, data_path: str, split:str=Literal["train", "test"], crops = False,transforms = None):
         super().__init__()
         self.go_pro_resolution = (1280, 720)
         self.cropped_region_side_length = 256
@@ -22,6 +22,7 @@ class GoProDataset(Dataset):
         self.transforms = transforms
         self.sharp_dir_content = os.listdir(self.sharp_base)
         self.blur_dir_content = os.listdir(self.blur_base)
+        self.crops = crops
 
     def get_cropped_regions_points(self):
         
@@ -50,43 +51,49 @@ class GoProDataset(Dataset):
         sharp_image = Image.open(sharp_image_path)
         blur_image = Image.open(blur_image_path)
 
-        crop_points = self.get_cropped_regions_points()
 
-        _256_scale_sharp = sharp_image.crop(crop_points)
-        _256_scale_blur = blur_image.crop(crop_points)
+        fine_scale_sharp = sharp_image
+        fine_scale_blur = blur_image
+
+        if self.crops:
+            region = self.get_cropped_regions_points()
+            fine_scale_sharp = sharp_image.crop(region)
+            fine_scale_blur = blur_image.crop(region)
+
 
         
+
         if self.transforms is not None:
             # _256_scale_sharp = self.transforms(_256_scale_sharp)
             # _256_scale_blur = self.transforms(_256_scale_blur)
-            _256_scale_blur, _256_scale_sharp = self.transforms(_256_scale_blur,_256_scale_sharp )
+            fine_scale_blur, fine_scale_sharp = self.transforms(fine_scale_blur,fine_scale_sharp )
         else:
-            _256_scale_blur, _256_scale_sharp = F.to_tensor(_256_scale_blur) ,F.to_tensor(_256_scale_sharp)
+            fine_scale_blur, fine_scale_sharp = F.to_tensor(fine_scale_blur) ,F.to_tensor(fine_scale_sharp)
 
-        _128_scale_blur = F.resize(_256_scale_blur, size=
+        medium_scale_blur = F.resize(fine_scale_blur, size=
                                     [
                                         round(self.scaling_factor*self.cropped_region_side_length), 
                                         round(self.scaling_factor*self.cropped_region_side_length), 
                                     ])
         
-        _64_scale_blur  = F.resize(_256_scale_blur, size=
+        coarse_scale_blur  = F.resize(fine_scale_blur, size=
                                     [
                                         round(self.scaling_factor*self.scaling_factor*self.cropped_region_side_length), 
                                         round(self.scaling_factor*self.scaling_factor*self.cropped_region_side_length), 
                                     ])
     
 
-        _128_scale_sharp = F.resize(_256_scale_sharp, size=
+        medium_scale_sharp = F.resize(fine_scale_sharp, size=
                                     [
                                         round(self.scaling_factor*self.cropped_region_side_length), 
                                         round(self.scaling_factor*self.cropped_region_side_length), 
                                     ])
         
-        _64_scale_sharp  = F.resize(_256_scale_sharp, size=
+        coarse_scale_sharp  = F.resize(fine_scale_sharp, size=
                                     [
                                         round(self.scaling_factor*self.scaling_factor*self.cropped_region_side_length), 
                                         round(self.scaling_factor*self.scaling_factor*self.cropped_region_side_length), 
                                     ])
         #! ARE THE TENSORS BEING SCALED?
         # print()
-        return (_256_scale_blur, _128_scale_blur, _64_scale_blur), (_256_scale_sharp, _128_scale_sharp, _64_scale_sharp)
+        return (fine_scale_blur, medium_scale_blur, coarse_scale_blur), (fine_scale_sharp, medium_scale_sharp, coarse_scale_sharp)
