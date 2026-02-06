@@ -77,17 +77,22 @@ class DeepDeblur(nn.Module):
         self
 
     def forward(self, blur_tensors):
+        b1, b2, b3 = None, None, None
+
         blur_tensors[-1] = blur_tensors[-1] - self.per_channel_mean
-        blur_tensors[-2] = blur_tensors[-2] - self.per_channel_mean
-        blur_tensors[-3] = blur_tensors[-3] - self.per_channel_mean
+        if len(blur_tensors) == 3:
+            blur_tensors[-2] = blur_tensors[-2] - self.per_channel_mean
+            blur_tensors[-3] = blur_tensors[-3] - self.per_channel_mean
 
 
         b3, u3 = self.coarse_level_network(blur_tensors[-1])
-        b2, u2 = self.intermediate_level_network(blur_tensors[-2], u3)
-        b1, _ = self.fine_level_network(blur_tensors[-3], u2)
+        if len(blur_tensors) == 3:
+            b2, u2 = self.intermediate_level_network(blur_tensors[-2], u3)
+            b1, _ = self.fine_level_network(blur_tensors[-3], u2)
         
         b3 = b3 + self.per_channel_mean
-        b2 = b2 + self.per_channel_mean
-        b1 = b1 + self.per_channel_mean
+        if len(blur_tensors) == 3:
+            b2 = b2 + self.per_channel_mean
+            b1 = b1 + self.per_channel_mean
 
         return b1, b2, b3

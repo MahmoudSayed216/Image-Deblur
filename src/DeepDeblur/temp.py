@@ -71,34 +71,30 @@ class GoProDataset(Dataset):
         else:
             fine_scale_blur, fine_scale_sharp = F.to_tensor(fine_scale_blur) ,F.to_tensor(fine_scale_sharp)
 
-        if self.crops:
-            medium_scale_blur = F.resize(fine_scale_blur, size=
-                                        [
-                                            round(self.scaling_factor*self.cropped_region_side_length), 
-                                            round(self.scaling_factor*self.cropped_region_side_length), 
-                                        ])
-            
-            coarse_scale_blur  = F.resize(fine_scale_blur, size=
-                                        [
-                                            round(self.scaling_factor*self.scaling_factor*self.cropped_region_side_length), 
-                                            round(self.scaling_factor*self.scaling_factor*self.cropped_region_side_length), 
-                                        ])
+        medium_scale_blur = F.resize(fine_scale_blur, size=
+                                    [
+                                        round(self.scaling_factor*self.cropped_region_side_length), 
+                                        round(self.scaling_factor*self.cropped_region_side_length), 
+                                    ])
         
+        coarse_scale_blur  = F.resize(fine_scale_blur, size=
+                                    [
+                                        round(self.scaling_factor*self.scaling_factor*self.cropped_region_side_length), 
+                                        round(self.scaling_factor*self.scaling_factor*self.cropped_region_side_length), 
+                                    ])
+    
 
-            medium_scale_sharp = F.resize(fine_scale_sharp, size=
-                                        [
-                                            round(self.scaling_factor*self.cropped_region_side_length), 
-                                            round(self.scaling_factor*self.cropped_region_side_length), 
-                                        ])
-            
-            coarse_scale_sharp  = F.resize(fine_scale_sharp, size=
-                                        [
-                                            round(self.scaling_factor*self.scaling_factor*self.cropped_region_side_length), 
-                                            round(self.scaling_factor*self.scaling_factor*self.cropped_region_side_length), 
-                                        ])
+        medium_scale_sharp = F.resize(fine_scale_sharp, size=
+                                    [
+                                        round(self.scaling_factor*self.cropped_region_side_length), 
+                                        round(self.scaling_factor*self.cropped_region_side_length), 
+                                    ])
+        
+        coarse_scale_sharp  = F.resize(fine_scale_sharp, size=
+                                    [
+                                        round(self.scaling_factor*self.scaling_factor*self.cropped_region_side_length), 
+                                        round(self.scaling_factor*self.scaling_factor*self.cropped_region_side_length), 
+                                    ])
         #! ARE THE TENSORS BEING SCALED?
-
-        if self.crops:
-            return (fine_scale_blur, medium_scale_blur, coarse_scale_blur), (fine_scale_sharp, medium_scale_sharp, coarse_scale_sharp)
-        
-        return (fine_scale_blur, fine_scale_sharp)
+        # print()
+        return (fine_scale_blur, medium_scale_blur, coarse_scale_blur), (fine_scale_sharp, medium_scale_sharp, coarse_scale_sharp)

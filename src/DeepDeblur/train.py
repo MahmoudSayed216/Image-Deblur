@@ -185,42 +185,33 @@ def create_data_loaders(dataset_path: str, training_configs: dict, shared_config
 #TODO: implement this function
 def compute_test_metrics(model, loss_fn, device, test_loader, mx) -> tuple[float, float]:
     model.eval()
-    three_scales_mse = 0
-    high_scale_mse = 0
+    # three_scales_mse = 0
+    test_mse = 0
     ssim_score = 0
     n_examples = 0
     ssim_calc = SSIM(device)
     sampels = []
     with torch.no_grad():
-        for i, ((_256b, _128b, _64b), (_256s, _128s, _64s)) in enumerate(test_loader):
-            _256b = _256b.to(device)
-            _128b = _128b.to(device)
-            _64b = _64b.to(device)
-            _256s = _256s.to(device)
-            _128s = _128s.to(device)
-            _64s = _64s.to(device)
+        for i, ((fine_b), (fine_s)) in enumerate(test_loader):
+            fine_b = fine_b.to(device)
+            fine_s = fine_s.to(device)
 
 
-            _256g, _128g, _64g = model([_256b, _128b, _64b])
+            fine_g, _, __ = model([fine_b])
 
-            _256loss = loss_fn(_256g, _256s)
-            _128loss = loss_fn(_128g, _128s)
-            _64loss = loss_fn(_64g, _64s)
+            fine_loss = loss_fn(fine_g, fine_s)
 
-            total_loss = (_256loss + _128loss + _64loss)/3
-
-            ssim_score += ssim_calc.calculate(_256g, _256s) 
-            three_scales_mse+=total_loss.item()
-            high_scale_mse+=_256loss.item()
+            ssim_score += ssim_calc.calculate(fine_g, fine_s) 
+            test_mse+=fine_loss.item()
             n_examples+=1
             if n_examples < 3:
-                sampels.append(_256g)
+                sampels.append(fine_g)
 
-    three_scales_avg_mse = three_scales_mse/n_examples
-    high_scale_avg_mse = high_scale_mse/n_examples
-    psnr = PSNR(three_scales_avg_mse, max_val=1)
+    fine_scale_avg_mse = test_mse/n_examples
+    psnr = PSNR(fine_scale_avg_mse, max_val=1)
     ssim = ssim_score/n_examples
-    return three_scales_avg_mse, high_scale_avg_mse, psnr, ssim, sampels
+    
+    return fine_scale_avg_mse, psnr, ssim, sampels
 
 
 def load_checkpoint(session_path: str, state_type, device, model_name, session_id, checkpoint_id):
@@ -302,10 +293,10 @@ def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: d
         
         scheduler.step()
         avg_train_mse = epoch_cummulative_loss/steps
-        three_scales_test_mse, high_scale_test_mse, psnr, ssim, samples = compute_test_metrics(model, loss_fn, DEVICE, test_loader, 1)
+        fine_scale_test_mse, psnr, ssim, samples = compute_test_metrics(model, loss_fn, DEVICE, test_loader, 1)
         logger.log(f"Average Train MSE = {avg_train_mse:.12f}")
-        logger.log(f"High scale test MSE = {high_scale_test_mse:.12f}")
-        logger.log(f"3 scales test MSE = {three_scales_test_mse:.12f}")
+        logger.log(f"High scale test MSE = {fine_scale_test_mse:.12f}")
+        # logger.log(f"3 scales test MSE = {three_scales_test_mse:.12f}")
         logger.log(f"PSNR: {psnr}")
         logger.log(f"SSIM: {ssim}")
         logger.debug(f"Minimum value in output tensors: {mn}")
@@ -313,10 +304,10 @@ def train(train_loader: DataLoader, test_loader: DataLoader, training_configs: d
 
         if cp_handler.check_save_every(epoch):
             logger.checkpoint(f"{SAVE_EVERY} epochs have passed, saving data in last.pth")
-            cp_handler.save_model(model=model, optim=optim, sched=scheduler, psnr=psnr, epoch=epoch, preds=samples, loss=three_scales_test_mse, save_type='last')
+            cp_handler.save_model(model=model, optim=optim, sched=scheduler, psnr=psnr, epoch=epoch, preds=samples, loss=fine_scale_test_mse, save_type='last')
         if cp_handler.metric_has_improved(psnr):
             logger.checkpoint(f"metric has improved, saving data in best.pth")
-            cp_handler.save_model(model=model, optim=optim, sched=scheduler, psnr=psnr, epoch=epoch, preds=samples, loss=three_scales_test_mse, save_type='best')
+            cp_handler.save_model(model=model, optim=optim, sched=scheduler, psnr=psnr, epoch=epoch, preds=samples, loss=fine_scale_test_mse, save_type='best')
 
 
 
